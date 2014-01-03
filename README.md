@@ -9,11 +9,11 @@ please refer to "A. Cosentino, A. Spognardi, A. Villani, D. Vitali and L.V. Manc
 Install
 ===
 
-# ./configure
+./configure
 
-# make 
+make 
 
-# make install
+make install
 
 Modules
 ===
@@ -34,23 +34,23 @@ Fan includes a lot of modules:
 Command line Parameter
 ===
 
--h          get Help
--M <input>	read from files or subdirectories of this directory.
--r <input>	read from file.
--R <input>	read from directory.
--c <input>	number of flows to analyze.
--m <input>	metric to compute
--t <input>	timeslot to analyze
--T <input>	active timeout of the router
--x <input>	Config xml file
--d <input>	log directory different from standard
--e <input>	Execution Type: File or network
--I <input>	Time interval between rotation of NetFlow file obtained by listening network
--D <input>	Store directory of NetFlow file obtained by listening network
--A <input>	Daemonize the collector
--b host		bind socket to host/IP addr
--p portnum	listen on port portnum
--H <input>	Max number of threads for the analysis
+* -h          get Help
+* -M <input>	read from files or subdirectories of this directory.
+* -r <input>	read from file.
+* -R <input>	read from directory.
+* -c <input>	number of flows to analyze.
+* -m <input>	metric to compute
+* -t <input>	timeslot to analyze
+* -T <input>	active timeout of the router
+* -x <input>	Config xml file
+* -d <input>	log directory different from standard
+* -e <input>	Execution Type: File or network
+* -I <input>	Time interval between rotation of NetFlow file obtained by listening network
+* -D <input>	Store directory of NetFlow file obtained by listening network
+* -A <input>	Daemonize the collector
+* -b host		bind socket to host/IP addr
+* -p portnum	listen on port portnum
+* -H <input>	Max number of threads for the analysis
 
 Modules Configuration 
 ===
