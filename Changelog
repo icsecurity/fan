@@ -1,0 +1,13 @@
+Versione 0.25 - 30/01/2013
+
+- Aggiunta la possibilità di scegliere indirizzo ipv4/ipv6/hostname su cui impostare l'ascolto della rete
+- Aggiunta la possibilità di scegliere la porta di ascolto della rete
+- Parliamo della modalità Network
+
+Versione 0.2 - 29/01/2013
+
+- Aggiunte le cartelle lib/ bin/ e results/
+- In results sono presenti i risultati della computazione dei singoli moduli in .csv
+- In bin/ sono presenti i binari e l'eseguibile analyzer
+- In lib/ le librerie .so
+- Migliorato il logging e risultati subito plottabili con possibilità d'importazione in foglio elettronico e gnuplot

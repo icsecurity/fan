@@ -1,0 +1,12 @@
+#!/bin/bash
+# script to send simple email
+# email subject
+SUBJECT="Prova"
+# Email To ?
+EMAIL="ancosen@gmail.com"
+# Email text/message
+EMAILMESSAGE="prova"
+echo "This is an email message test" > $EMAILMESSAGE
+echo "This is email text" >> $EMAILMESSAGE
+# send an email using /bin/mail
+/usr/bin/mail -s "$SUBJECT" "$EMAIL" 

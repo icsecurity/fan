@@ -1,0 +1,42 @@
+<Analysis>
+<Data>
+<mode>
+  <type>random</type>
+</mode>
+
+  <timeslot>
+	<id>2012-11-12 00:03</id>
+        <block>
+	<number>29123</number>
+	   <ip_src>
+		<value>128-264</value>
+	   </ip_src>
+	   <ip_dst>
+		<value>125-302</value>
+	   </ip_dst>
+	   <packets>
+		<value>1-1800</value>
+	   </packets>
+	   <bytes>
+		<value>1-50</value>
+	   </bytes>
+	   <srcport>
+		<value>1-21</value>
+	   </srcport>
+	   <dstport>
+		<value>1-80</value>
+	   </dstport>
+	   <protocol>
+		<value>1-255</value>
+	   </protocol>
+	   <flagstring>
+		<value>.A.R.F</value>
+	   </flagstring>
+	   <tos>
+		<value>1-255</value>
+	   </tos>
+        </block>
+   </timeslot>
+
+</Data>
+</Analysys>

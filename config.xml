@@ -1,0 +1,52 @@
+<Analysis>
+<Stats>
+
+
+  <measure_lib>
+	<name>entropy.so</name>
+   </measure_lib>
+
+  <measure_lib>
+	<name>Kullback-leibler.so</name>
+   </measure_lib>
+
+  <measure_lib>
+	<name>Renyi.so</name>
+   </measure_lib>
+
+  <measure_lib>
+	<name>Kl_entropy_product.so</name>
+	   <measure_depend>
+		<name>entropy.so</name>
+	   </measure_depend>
+	   <measure_depend>
+		<name>Kullback-leibler.so</name>
+	   </measure_depend>
+   </measure_lib>
+
+   <measure_lib>
+	<name>Syn_flooding.so</name>
+   </measure_lib>
+
+   <measure_lib>
+	<name>Ddos_statistical_test.so</name>
+   </measure_lib>
+
+   <measure_lib>
+	<name>Contabytes.so</name>
+   </measure_lib>
+
+   <measure_lib>
+	<name>Contaflussi.so</name>
+   </measure_lib>
+
+   <measure_lib>
+	<name>Flooding_investigation.so</name>
+   </measure_lib>
+
+   <measure_lib>
+	<name>Kmeans_anomaly.so</name>
+   </measure_lib>
+
+</Stats>
+</Analysys>

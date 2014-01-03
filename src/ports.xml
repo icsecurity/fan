@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+
+<root>
+<port number="20" transport="tcp" protocol="ftp-data transfer" />
+<port number="21" transport="tcp" protocol="ftp-control" />
+<port number="22" transport="tcp" protocol="SSH" />
+<port number="23" transport="tcp" protocol="telnet" />
+<port number="25" transport="tcp" protocol="SMTP-m routing" />
+<port number="53" transport="*" protocol="DNS" />
+<port number="80" transport="*" protocol="HTTP" />
+<port number="110" transport="tcp" protocol="POP3" />
+<port number="143" transport="tcp" protocol="IMAP-management" />
+<port number="179" transport="tcp" protocol="BGP" />
+<port number="194" transport="*" protocol="IRC" />
+<port number="220" transport="*" protocol="IMAP-v3" />
+<port number="443" transport="tcp" protocol="HTTPS" />
+<port number="513" transport="tcp" protocol="rlogin" />
+<port number="587" transport="tcp" protocol="SMTP-m submission" />
+<port number="666" transport="udp" protocol="Doom" />
+<port number="992" transport="*" protocol="telnet-over SSL" />
+<port number="993" transport="tcp" protocol="IMAPS" />
+<port number="995" transport="tcp" protocol="POP3S" />
+</root>

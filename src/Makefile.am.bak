@@ -1,0 +1,9 @@
+
+lib_LTLIBRARIES = \
+	libmeasure1.la
+
+libmeasure1_la_SOURCES = \
+	measure1.c      \
+	measure1.h
+
+## File created by the gnome-build tools

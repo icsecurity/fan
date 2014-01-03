@@ -1,0 +1,638 @@
+Analyzer Version 0.1
+
+Installazione:
+- Scompattare il file .zip
+- Entrare nella cartella analyzerbucket
+- eseguire ./configure
+- make
+- in bin, sarà presente l'eseguibile analyzer
+- Per ora eseguire, supponendo di essere in /analyzerbucket:
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./lib (in via di sistemazione)
+- In lib/ sono presenti le librerie .so da utilizzare, non c'è bisogno di specificare il path nel file di configurazione xml, basta il nome delle librerie
+- In bin/ ci sono i file binari
+
+L'ambiente adesso è pronto per essere utilizzato. Nella cartella src abbiamo i seguenti moduli:
+Contabytes.so
+Ddos_statistical_test.so
+Entropy_modded.so
+entropy.so
+Flooding_investigation.so
+Frequency_mod.so
+Kl_modded.so
+Kmeans_anomaly.so
+Kullback-leibler.so
+Renyi_modded.so
+Renyi.so
+Stock_market.so
+Syn_flooding.so
+
+Contabytes è un modulo fatto per la fase di testing prearticolo, ma comunque utilizzabili.
+Entropy_modded, Kl_modded e Renyi_modded sono le versioni dei moduli che attendono i dati da analizzare da Frequency_mod.so e dunque sono dipendenti da esso. entropy, Kullback-leibler e Renyi sono invece i moduli che effettuano i calcoli direttamente, quindi senza passare per Frequency_mod e dunque non hanno dipendenze. Sono stati usati per fare il confronto tra esecuzione con moduli con dipendenze e senza dipendenze.
+
+I parametri specificabili sono i seguenti:
+-h
+-M <input>	read from files or subdirectories of this directory.
+-r <input>	read from file.
+-R <input>	read from directory.
+-c <input>	number of flows to analyze.
+-m <input>	metric to compute
+-t <input>	timeslot to analyze
+-T <input>	active timeout of the router
+-x <input>	Config xml file
+-d <input>	log directory different from standard
+-e <input>	Execution Type: File or network
+-I <input>	Time interval between rotation of NetFlow file obtained by listening network
+-D <input>	Store directory of NetFlow file obtained by listening network
+-A <input>	Daemonize the collector
+-b host		bind socket to host/IP addr
+-p portnum	listen on port portnum
+-H <input>	Max number of threads for the analysis
+
+-M permette di specificare una subdirectory di una directory e dei file al suo interno
+-R permette di specificare una directory
+-r permette di specifiare un singolo file
+-c limita il numero di flows da analizzare
+-m permette di specificare da linea di comando le metriche da eseguire (senza dipendenze)
+-t permette di specificare il timeslot da utilizzare (almeno 10 secondi)
+-T permette di specificare il timeout da utilizzare (massimo 3600 secondi, oltre utilizziamo la memoria swap sul server)
+-x permette di specificare il path di un file di configurazione per le metriche da eseguire in formato xml
+-d permette di cambiare la directory di log rispetto allo standard (cioè analyzerbucket/log/)
+-e permette di specificare il tipo di esecuzione (File, Network o Generator). Nel caso di File facciamo l'analisi di file o directory specificate, nel caso di Network ascoltiamo la rete e incameriamo in files nfcapd.data, mentre nel caso di Generator generiamo dei timeslot di flussi tramite file XML e li passiamo all'analisi
+-H specifichiamo il numero di thread massimi da utilizzare in modalità multithread (se H è specificato la modalità multithread è automatica)
+-I intervallo prima della rotazione dei file in modalità Network
+-D Directory dove porre i files in modalità Network
+-A Rendiamo il collector che ascolta la rete un demone
+-b consente di specificare hostname/ipv4/ipv6 su cui impostare l'ascolto della rete in modalità Network
+-p consente di specificare la porta su cui impostare l'ascolto della rete
+
+Gli ultimi tre sono parametri associati esclusivamente all'uso in modalità Network, verranno poi ampliati con la specificazione dell'indirizzo e della porta di ascolto.
+
+Veniamo alla definizione del file di configurazione xml e partiamo da un esempio. La struttura tipica è la seguente:
+
+<Analysis>
+<Stats>
+
+  <measure_lib>
+	<name>Entropy_modded.so</name>
+	   <measure_depend>
+		<name>Frequency_mod.so</name>
+	   </measure_depend>
+   </measure_lib>
+
+   <measure_lib>
+	<name>Kl_modded.so</name>
+	   <measure_depend>
+		<name>Frequency_mod.so</name>
+	   </measure_depend>
+   </measure_lib>
+
+   <measure_lib>
+	<name>Renyi_modded.so</name>
+	   <measure_depend>
+		<name>Frequency_mod.so</name>
+	   </measure_depend>
+   </measure_lib>
+
+
+   <measure_lib>
+	<name>Frequency_mod.so</name>
+   </measure_lib>
+
+</Stats>
+</Analysys>
+
+Come si può vedere soltano Frequency_mod.so è senza dipendenze e dunque questa configurazione è valida, in quanto almeno un modulo non deve avere dipendenze (è presente una funzione che fa questo controllo prima di passare all'esecuzione dei moduli). In ogni tag <measure_lib> sono specificati:
+- <name> della libreria .so da eseguire
+- <measure_depend> una per ogni libreria da cui è dipendente il modulo. Per cui se abbiamo Kl_modded.so che è dipendente da Frequency_mod.so e Entropy_modded.so, allora la struttura dei tag associati a Kl_modded.so sarà:
+   <measure_lib>
+	<name>Kl_modded.so</name>
+	   <measure_depend>
+		<name>Frequency_mod.so</name>
+	   </measure_depend>
+	   <measure_depend>
+		<name>Entropy_modded.so</name>
+	   </measure_depend>
+   </measure_lib>
+
+Sulla base di questa costruzione del file xml, il plugin manager (MethodManager.c e MethodManager.h) costruirà una struttura dati apposita che tenga conto dell'ordine in cui eseguire i moduli e nel caso di modalità multithreading anche l'ordine in cui eseguirli tenendo conto delle dipendenze.
+
+Nella directory è presente un config.xml di esempio (che è stato usato) in analyzerbucket/.
+
+Specificato come costruire il file di configurazione xml delle metriche da eseguire, passiamo ad alcuni esempi.
+Supponiamo di trovarci in /src
+
+Modalità File:
+
+Eseguire l'analisi su di un solo file specificando una sola metrica senza dipendenze:
+
+- ./analyzer -e 'File' -r ../../12/nfcapd.201211120000 -t 60 -T 900 -m 'entropy.so'
+
+Questo comando analizza il file nfcapd.201211120000, con timeslot di 60 secondi e Timeout di 900 secondi, secondo la metrica entropy.so
+
+Eseguire l'analisi su di una cartella specificando una directory da analizzare e le dipendeze tramite file di configurazione xml:
+
+- ./analyzer -e 'File' -R ../../12 -t 60 -T 900 -x '../config.xml'
+
+Questo comando analizzerà l'intero contenuto di 12, quindi tutti i file NetFlow presenti con timeslot di 60 secondi e Timeout di 900, secondo le metriche e le dipendenze descritte nel file di configurazione config.xml. Non è specificato -H dunque l'esecuzione non è in mulithreading.
+
+Eseguire l'analisi su un dato intervallo temporale all'interno di una giornata:
+
+- ./analyzer -e 'File' -R ../../12/nfcapd.201211120000:nfcapd.201211120015 -t 60 -T 900 -x '../config.xml'
+
+Questo comando analizzerà 15 minuti del giorno 12, dalle 00:00 alle 00:15 presenti nei file nfcapd.201211120000, nfcapd.201211120005,nfcapd.201211120010,nfcapd.201211120015 con timeslot di 60 secondi e Timeout di 900 secondo le metriche specificate in config.xml. Anche in questo caso non utilizziamo il multithreading, in quanto non è specificato -H.
+
+Eseguire l'analisi su una directory, tramite file di configurazione xml e in modalità multithreading:
+
+- ./analyzer -e 'File' -R ../../12 -t 60 -T 900 -x '../config.xml' -H 20
+
+Questo comando permette di analizzare il contenuto di 12 con timeslot di 60 secondi e timeout di 900 secondi, tramite le metriche e le dipendenze specificate in config.xml, in modalità multithreading (il programma non tiene ancora conto della limitazione al numero di thread a 20, ma il multithreading funziona molto bene, la funzionalità che tiene conto della limitazione la sto sistemando).
+
+Eseguire l'analisi limitando il numero di flussi da analizzare:
+
+- ./analyzer -e 'File' -R ../../12 -t 60 -T 900 -c 1000000 -x '../config.xml'
+
+Questo comando analizzerà il primo milione di flussi in 12, con timeslot di 60 secondi e Timeout di 900, secondo le metriche e le dipendenze descritte nel file di configurazione config.xml. Non è specificato -H dunque l'esecuzione non è in mulithreading.
+
+Modalità Network:
+
+- ./analyzer -e 'Network' -I 300 -D ../../prova
+
+Questo comando ascolta la rete, per ora solo in localhost sulla porta 9995 e incamera i flussi in file nfcapd.data, ruotandoli ogni 300 secondi e ponendoli nella cartella prova.
+
+Struttura dei moduli:
+
+I moduli si compogno di 4 funzioni fondamentali:
+
+- double so_init (int numflows)
+che effettua operazione di inizializzazione
+
+- double so_process (nf_record_t * r_current, int current_flows, char *bucket_id)
+che processa i dati del timeslot arrivato
+
+- double so_close (void)
+che effettua operazioni di pulizia e libera la memoria
+
+- double so_log (char *logdir)
+che imposta la directory di log se standard o definita dall'utente
+
+- void ** so_getResult (void)
+che consente ad altri moduli di accedere ai risultati di un modulo gerarchicamente superiore
+
+Per avere un'idea chiara mostriamo il codice del modulo contabytes che per ogni timeslot conta i bytes all'interno e li stampa a video, oltre che salvarli in un file di log.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <inttypes.h>
+#include <math.h>
+#include <dlfcn.h>
+#include "frequency.h"
+#include "log.h"
+
+// Global variables
+// Struct entropy_data is in frequency.h
+struct entropy_data data;
+int iterations = 0;
+// File for logging purpose
+char filename[FILENAME_MAX];
+// File for logging purpose
+char resultname[FILENAME_MAX];
+// Sum of analyzed flows
+int sum_flows = 0;
+// Logdir specified
+char *spec_logdir = NULL;
+// bytes global
+float num_bytes = 0.0;
+
+// Function prototypes
+// init operation
+double so_init (int numflows);
+// Process data
+double so_process (nf_record_t * r_current, int current_flows,
+		   char *bucket_id);
+// Close operations: free resources
+double so_close (void);
+// Specified the log directory
+double so_log (char *logdir);
+// With this function other modules can access the results of this one and use them in their computation
+void **so_getResult (void);
+
+// Initialize the data struct entropy_data and its field
+double init_all (int numflows);
+// Process data from ip source point of view
+int process (nf_record_t * r_current, int current_flows);
+
+// so_init initializes the field of the entropy_data data structure
+// numflows --> number of current timeslot flows
+double
+so_init (int numflows)
+{
+  iterations++;
+  if (iterations == 1)
+    {
+      strncpy (filename, setFileName (CONTA, spec_logdir), FILENAME_MAX);
+      strncpy (resultname, setFileNameResults (CONTA), FILENAME_MAX);
+  writeLogFile (filename, STATUS_OK,
+		"Start computing Contabytes.so module", -1);
+    }
+  if (spec_logdir != NULL)
+    free (spec_logdir);
+  return STATUS_OK;
+}
+
+// Process Data
+// r_current --> current timeslot flows
+// current_flows --> number of current timeslot flows
+double
+so_process (nf_record_t * r_current, int current_flows, char *bucket_id)
+{
+  writeLogFile (filename, BUCKET, bucket_id, -1);
+  // Analyze data by different entropy base
+  // IP source
+  int z = 0;
+  float bytes_tot = 0.0;
+  for (z = 1; z <= current_flows; z++)
+    {
+      bytes_tot += (float) r_current[z].dOctets;
+    }
+  num_bytes = bytes_tot;
+  FILE *fs;
+  fs = fopen(resultname, "a");
+  if(fs == NULL){
+    printf("Couldn't open file\n");
+    return ERR_OPEN_FILE;
+   }
+  if (iterations == 1)
+  {
+	  fprintf(fs, "Timeslot Bucket,Total bytes \n");
+  }
+  fprintf(fs, "%s,%.6f \n", bucket_id,bytes_tot);
+  fclose(fs);
+  return STATUS_OK;
+}
+
+// Close operations
+// Free resources
+double
+so_close (void)
+{
+  return STATUS_OK;
+}
+
+// Change default log directory
+double
+so_log (char *logdir)
+{
+  if (logdir == NULL)
+    return STATUS_OK;
+  else
+    {
+      spec_logdir = (char *) malloc (MAX_LOGDIR_LENGTH * sizeof (char));
+      if (spec_logdir == NULL)
+	{
+	  return MEMORY_ERROR;
+	}
+      strncpy (spec_logdir, logdir, MAX_LOGDIR_LENGTH);
+    }
+  return STATUS_OK;
+}
+
+// With this function other modules can access the results of this one and use them in their computation
+void **
+so_getResult (void)
+{
+  void **pt = NULL;
+  pt = (void **) malloc (1 * sizeof (void *));
+  pt[0] = malloc (sizeof (void *));
+  *(float *) pt[0] = num_bytes;
+  return pt;
+}
+
+Abbastanza semplice. In so_close non si libera nulla perchè non allochiamo niente.
+
+Per leggere in un altro modulo, possiamo usare il codice seguente:
+
+	typedef void** (*get_result)(void);
+	
+	char* error;
+	void* module;
+	// Open the .so
+	get_result so_getResult;
+	module = dlopen("../lib/Contabytes.so", RTLD_LAZY);
+	if (!module) 
+	{
+		fprintf(stderr, "Couldn't open %s : %s\n",
+		"Contabytes.so",dlerror());
+		return ERR_OPEN_SO;
+	}
+	/* Get symbol */
+	dlerror();
+	// Function so_init
+	so_getResult= dlsym(module, "so_getResult");
+	if ((error = dlerror())) 
+	{
+		fprintf(stderr, "Couldn't find so_init: %s\n", error);
+		return ERR_OPEN_SO;
+	}
+	void** pro = NULL;
+	pro = (*so_getResult)();
+	printf("Bytes analizzati %f \n", *(float*)pro[0]);
+
+Sottosistema di logging:
+
+Per ogni istanza del programma in log/ saranno presenti un file di log Analyzer_datadiesecuzione che conterrà informazioni di carattere generale sulle operazioni svolte dal collector prima di passare i dati ai moduli e, supponendo di avere n moduli, n file di log identificati da nomemodulo_datadiesecuzione, in cui vengono riportate le operazioni svolte, gli allarmi e valori intermedi di calcolo.
+
+Nel file di log analyzer_datadiesecuzione sono riportati i parametri passati in input al programma in partenza, quindi basta guardare al suo interno per avere un quadro di quanto richiesto.
+
+I valori veri e propri di computazione saranno presenti in results/ dove avremo, sempre supponendo di avere n moduli da eseguire, n file in formato .csv che conterranno i risultati del calcolo dei diversi moduli, rendendoli importabili in programmi per il plotting e per l'elaborazione.
+
+Modalità Generatore:
+
+La modalità generatore è specificata tramite l'opzione -e Generator.
+
+FAN, in questa modalità attende un comando di questo tipo:
+
+- ./analyzer -e 'Generator' -x '../config.xml' -g '../generator.xml' -H 10
+
+Il file config.xml specificherà le metriche da eseguire sui flussi generati e le loro dipendenze. Il file generator.xml specificherà i flussi da costruire, mentre -H rappresenta la modalità multithreading.
+
+Passiamo ora a vedere la struttura dei file per la generazione. 
+
+<Analysis>
+<Data>
+<mode>
+  <type>build</type>
+</mode>
+
+  <timeslot>
+	<id>2012-11-12 00:03</id>
+        <block>
+	<number>2000</number>
+	   <ip_src>
+		<value>12</value>
+		<string>152.71.12.23</string>
+	   </ip_src>
+	   <ip_dst>
+		<value>25</value>
+		<string>212.71.12.23</string>
+	   </ip_dst>
+	   <packets>
+		<value>1-23000</value>
+	   </packets>
+	   <bytes>
+		<value>1-800</value>
+	   </bytes>
+	   <srcport>
+		<value>2893</value>
+	   </srcport>
+	   <dstport>
+		<value>80</value>
+	   </dstport>
+	   <protocol>
+		<value>6</value>
+	   </protocol>
+	   <flagstring>
+		<value>.A.R.F</value>
+	   </flagstring>
+	   <tos>
+		<value>1-255</value>
+	   </tos>
+        </block>
+        <block>
+	<number>2000</number>
+	   <ip_src>
+		<value>31</value>
+		<string>152.71.12.23</string>
+	   </ip_src>
+	   <ip_dst>
+		<value>23</value>
+		<string>155.71.12.23</string>
+	   </ip_dst>
+	   <packets>
+		<value>1-23000</value>
+	   </packets>
+	   <bytes>
+		<value>1-600</value>
+	   </bytes>
+	   <srcport>
+		<value>2893</value>
+	   </srcport>
+	   <dstport>
+		<value>121</value>
+	   </dstport>
+	   <protocol>
+		<value>17</value>
+	   </protocol>
+	   <flagstring>
+		<value>.A.RS.</value>
+	   </flagstring>
+	   <tos>
+		<value>1-255</value>
+	   </tos>
+        </block>
+   </timeslot>
+
+  <timeslot>
+	<id>2012-11-12 00:04</id>
+        <block>
+	<number>2000</number>
+	   <ip_src>
+		<value>25</value>
+		<string>152.71.12.23</string>
+	   </ip_src>
+	   <ip_dst>
+		<value>25</value>
+		<string>212.71.12.23</string>
+	   </ip_dst>
+	   <packets>
+		<value>1-23000</value>
+	   </packets>
+	   <bytes>
+		<value>1-800</value>
+	   </bytes>
+	   <srcport>
+		<value>2893</value>
+	   </srcport>
+	   <dstport>
+		<value>80</value>
+	   </dstport>
+	   <protocol>
+		<value>6</value>
+	   </protocol>
+	   <flagstring>
+		<value>.A..S.</value>
+	   </flagstring>
+	   <tos>
+		<value>1-255</value>
+	   </tos>
+        </block>
+        <block>
+	<number>2000</number>
+	   <ip_src>
+		<value>23</value>
+		<string>152.71.12.23</string>
+	   </ip_src>
+	   <ip_dst>
+		<value>23</value>
+		<string>155.71.12.23</string>
+	   </ip_dst>
+	   <packets>
+		<value>1-23000</value>
+	   </packets>
+	   <bytes>
+		<value>1-600</value>
+	   </bytes>
+	   <srcport>
+		<value>2893</value>
+	   </srcport>
+	   <dstport>
+		<value>121</value>
+	   </dstport>
+	   <protocol>
+		<value>17</value>
+	   </protocol>
+	   <flagstring>
+		<value>.A....</value>
+	   </flagstring>
+	   <tos>
+		<value>1-255</value>
+	   </tos>
+        </block>
+   </timeslot>
+
+</Data>
+</Analysys>
+
+Il tag <mode> consente di specificare nel tag <type> il tipo di generazione. Le modalità sono due:
+- build
+- random
+
+Build consente di specificare in ogni timeslot, indicizzato con una data e ora, la composizione del timeslot: questo significa che è possibile specificare più blocchi all'interno dello stesso timeslot, costruiti in modo diverso. In particolare i campi specificabili per ogni block di ogni timeslot sono:
+
+- id, che rappresenta la data e l'ora del timeslot
+- block, che rappresenta un blocco di flussi all'interno del timeslot. Questo tag si ripete nel timeslot per un numero di volte pari al numero di blocchi distinti che si vogliono specificare
+- Per ogni block è possibile specificare:
+	- Numero di flussi con il tag <number>
+	- Indirizzo IP sorgente, specificato sia in termini estesi (121.100.141.***), sia come un intero qualsiasi con il tag <ip_src>
+	- Indirizzo IP destinazione, specificato sia in termini estesi (121.100.141.***), sia come un intero qualsiasi con il tag <ip_dst>
+	- Range in cui far ricadere il numero di pacchetti per flusso, espresso come x - y, dove x è il minimo e y è il massimo e vengono 		  scelti in modo uniforme, con il tag <packets>
+	- Range in cui far ricadere il numero di bytes scambiati per flusso, espresso come x - y, dove x è il minimo e y è il massimo e 	  vengono scelti in modo uniforme, con il tag <bytes>
+	- Porta sorgente, specificata tramite il tag <srcport>
+	- Porta di destinazione, specificata tramite il tag <dstport>
+	- Protocollo, specificato come un intero tra 1 e 255 (TCP = 6, UDP = 17, ICMP = 1), con il tag <protocol>
+	- Flagstring, specifica i flag di ogni flusso, tramite una stringa di 6 caratteri, in assenza del flag viene posto un . In particolare 		  abbiamo:
+		- Posizione 0: URGENT, segnalato con U se presente e . altrimenti
+		- Posizione 1: ACK, segnalato con A se presente e . altrimenti
+		- Posizione 2: PUSH, segnalato con P se presente e . altrimenti
+		- Posizione 3: RESET, segnalato con R se presente e . altrimenti
+		- Posizione 4: SYN, segnalato con S se presente e . altrimenti
+		- Posizione 5: FIN, segnalato con F se presente e . altrimenti
+		- Se abbiamo ad esempio un blocco con flussi tutti contenenti SYN e ACK allora nel tag <flagstring> all'interno di <value> 
+		  specificheremo .A..S.
+	- Tos, Permette di specificare il type of service associato al flusso, da 1 a 255, tramite il tag <tos>
+
+Il random mode, specificato nel tag <mode> all'interno di <type> consente invece di creare dei flussi random, secondo una distribuzione uniforme specificando dei range per ogni campo. Vediamo un esempio di file:
+
+<Analysis>
+<Data>
+<mode>
+  <type>random</type>
+</mode>
+
+  <timeslot>
+	<id>2012-11-12 00:03</id>
+        <block>
+	<number>29123</number>
+	   <ip_src>
+		<value>128-264</value>
+	   </ip_src>
+	   <ip_dst>
+		<value>125-302</value>
+	   </ip_dst>
+	   <packets>
+		<value>1-1800</value>
+	   </packets>
+	   <bytes>
+		<value>1-50</value>
+	   </bytes>
+	   <srcport>
+		<value>1-21</value>
+	   </srcport>
+	   <dstport>
+		<value>1-80</value>
+	   </dstport>
+	   <protocol>
+		<value>1-255</value>
+	   </protocol>
+	   <flagstring>
+		<value>.A.R.F</value>
+	   </flagstring>
+	   <tos>
+		<value>1-255</value>
+	   </tos>
+        </block>
+   </timeslot>
+
+  <timeslot>
+	<id>2012-11-12 00:04</id>
+        <block>
+	<number>56123</number>
+	   <ip_src>
+		<value>126-276</value>
+	   </ip_src>
+	   <ip_dst>
+		<value>125-367</value>
+	   </ip_dst>
+	   <packets>
+		<value>1-2000</value>
+	   </packets>
+	   <bytes>
+		<value>1-60</value>
+	   </bytes>
+	   <srcport>
+		<value>1-21</value>
+	   </srcport>
+	   <dstport>
+		<value>1-80</value>
+	   </dstport>
+	   <protocol>
+		<value>1-17</value>
+	   </protocol>
+	   <flagstring>
+		<value>.A.R.F</value>
+	   </flagstring>
+	   <tos>
+		<value>1-255</value>
+	   </tos>
+        </block>
+   </timeslot>
+
+</Data>
+</Analysys>
+
+Come si può vedere, qui per ogni campo viene specificato un range. Per cui ripercorriamo i diversi tag:
+
+- id, che rappresenta la data e l'ora del timeslot
+- block, che rappresenta un blocco di flussi all'interno del timeslot. Questo tag si ripete nel timeslot per un numero di volte pari al numero di blocchi distinti che si vogliono specificare
+- Per ogni block è possibile specificare:
+	- Numero di flussi con il tag <number>
+	- Indirizzo IP sorgente, specificato come range tra due interi con il tag <ip_src> e scelto secondo una distribuzione uniforme
+	- Indirizzo IP destinazione, specificato come range tra due interi con il tag <ip_dst> e scelto secondo una distribuzione uniforme
+	- Range in cui far ricadere il numero di pacchetti per flusso, espresso come x - y, dove x è il minimo e y è il massimo e vengono 		  scelti in modo uniforme, con il tag <packets>
+	- Range in cui far ricadere il numero di bytes scambiati per flusso, espresso come x - y, dove x è il minimo e y è il massimo e 	  vengono scelti in modo uniforme, con il tag <bytes>
+	- Porta sorgente, specificata come range tramite il tag <srcport> e scelta tramite distribuzione uniforme
+	- Porta di destinazione, specificata come range tramite il tag <dstport> e scelta tramite distribuzione uniforme
+	- Protocollo, specificato come range tra 1 e 255 (TCP = 6, UDP = 17, ICMP = 1) e scelto tramite distribuzione uniforme, con il tag 	     <protocol>
+	- Flagstring, specifica i flag di ogni flusso, tramite una stringa di 6 caratteri, in assenza del flag viene posto un . In particolare 		  abbiamo:
+		- Posizione 0: URGENT, segnalato con U se presente e . altrimenti
+		- Posizione 1: ACK, segnalato con A se presente e . altrimenti
+		- Posizione 2: PUSH, segnalato con P se presente e . altrimenti
+		- Posizione 3: RESET, segnalato con R se presente e . altrimenti
+		- Posizione 4: SYN, segnalato con S se presente e . altrimenti
+		- Posizione 5: FIN, segnalato con F se presente e . altrimenti
+		- Se abbiamo ad esempio un blocco con flussi tutti contenenti SYN e ACK allora nel tag <flagstring> all'interno di <value> 
+		  specificheremo .A..S.
+	- Tos, Permette di specificare il type of service associato al flusso, come range da 1 a 255 e scelto tramite distribuzione uniforme, 		  attraverso il tag <tos>
+
+
+
