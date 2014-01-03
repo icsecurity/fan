@@ -3,6 +3,7 @@ Fan - FAst Netﬂow analyser
 
 Fan FAst Netﬂow analyser
 Version 0.1
+please refer to "A. Cosentino, A. Spognardi, A. Villani, D. Vitali and L.V. Mancini, FAN: FAst Netﬂow analyser, 32st Annual IEEE International Conference on Computer Communications (IEEE INFOCOM 2013), Turin, Italy" for more details.
 
 
 Install
